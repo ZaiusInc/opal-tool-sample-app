@@ -1,0 +1,26 @@
+{
+  "include": ["./src"],
+  "exclude": ["node_modules", "dist"],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "moduleResolution": "node",
+    "lib": ["es2018"],
+    "module": "commonjs",
+    "target": "es2018",
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": false, // off for convenience, enable to enforce cleaner code
+    "noUnusedParameters": false, // off for convenience, enable to enforce cleaner code
+    "noImplicitAny": false  // off for convenience, recommended value is true to enforce types and reduce bugs
+  }
+}
