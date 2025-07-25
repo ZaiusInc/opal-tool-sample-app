@@ -1,4 +1,5 @@
-import { logger, Function, Response } from '@zaiusinc/app-sdk';
+import { logger, Function, Response, storage } from '@zaiusinc/app-sdk';
+// import { AuthSection } from '../data/data';
 
 // Define interfaces for the parameters of each function
 interface GreetingParameters {
@@ -63,6 +64,27 @@ export class OpalToolFunction extends Function {
    * Add your logic here to handle every tool declared in the discoveryPayload.
    */
   public async perform(): Promise<Response> {
+    // uncomment the following lines to enable bearer token authentication
+    /*
+    const bearerToken = (await storage.settings.get('bearer_token')).bearer_token as string;
+    if (bearerToken && this.request.headers.get('Authorization') !== `Bearer ${bearerToken}`) {
+      logger.warn('Invalid or missing bearer token', JSON.stringify(this.request));
+      return new Response(401, 'Invalid or missing bearer token');
+    }
+    */
+
+    /*
+     * example: fetching configured username/password credentials
+     *
+    const auth = await storage.settings.get<AuthSection>('auth');
+    */
+
+    /*
+     * example: fetching Google Oauth token from secret storage
+     *
+     const token = await storage.secrets.get<Token>('token');
+     */
+
     if (this.request.path === '/discovery') {
       return new Response(200, discoveryPayload);
     } else if (this.request.path === '/tools/greeting') {

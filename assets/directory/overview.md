@@ -1,3 +1,3 @@
-# Experiment runtime calculator for Opal
+# \<Your app name>
 
-Opal tool to estimate time to run an experiment. Paste the URL from `Settings` tab into `Discovery URL` field in Opal account `Tools` section.
+\<This doc will be shown in Overview tab for your app in App Directory in OCP UI - replace with an overview of your app>

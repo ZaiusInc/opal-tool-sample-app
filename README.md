@@ -185,7 +185,7 @@ sections:
         key: opal_tool_url
         label: Opal Tool URL
         disabled: true
-        help: Paste the URL below into your Opal tool settings to enable the runtime calculator.
+        help: Paste the URL below into your Opal tool settings to enable the sample tool.
       - type: divider
       - type: instructions
         text:
@@ -203,9 +203,291 @@ TODO screenshot
 
 ## Multiple tool registries in a single app
 
+The sample app comes with a single tool registry. This is enough in most cases. However, sometimes it might be useful to expose multiple registeries and allow app users to pick registries they want to install to their Opal account. If you decide to add more registries to your app, you can do this in these steps: 
+
+1. Declare new registry function in `app.yml`
+```yml
+another_opal_tool: 
+  entry_point: AnotherOpalToolFunction
+  description: AnotherOpal tool function
+```
+
+2. Implement your tool function 
+
+  Create `AnotherOpalToolFunction.ts` file in `src/functions` folder. The file should export `AnotherOpalToolFunction` class, which extends `Function` abstract class.
+
+  Implement `perform` method of the class, similarily to how it is done in `src/functions/OpalToolFunction.ts`. 
+
+3. Expose another registry URL
+
+  Add an extra paramter to app settings form in `forms/settings.yml` class: 
+  ```yml
+  - type: text
+    key: another_opal_tool_url
+    label: Another Opal Tool URL
+    disabled: true
+    help: Paste the URL below into your Opal tool settings to enable another Opal tool.
+  ```
+
+  Set the new parameter in both `onInstall` and `onUpgrade` methods in `src/lifecycle/Lifecycle.ts` file: 
+  ```TypeScript
+    await App.storage.settings.put('instructions', {
+      opal_tool_url: `${functions.opal_tool}/discovery`,
+      another_opal_tool_url: `${functions.another_opal_tool}/discovery`
+    });
+  ```
+
+Now, users of your app can install each tool registry separately to their Opal accounts. 
+
 ## Custom configuration and authorization
 
+You can define custom settings (configuration) of your app. 
+This allows OCP users that install to provide configuration properties defined by you. 
+
+There are two main uses cases where this is useful: 
+
+- authorization in external services - you can ask users who use your app to authorize in an external service, e.g. Google
+- app behaviour customization - users can customize your app behaviour
+
+Check [OCP documentation](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/forms-ocp2) for all features supported by OCP. 
+
+Let's look at two common examples where this feature is useful: username/password authentication and OAuth authentication. 
+
+### Username/password authentication
+
+You can ask users to provide credentials to an external service your app connects to. 
+
+Start from declaring app settings section in `forms/settings.xml` file: 
+```yml
+ - key: auth
+   label: Authorization
+   properties:
+     - integrated
+   elements:
+     - type: text
+       key: email
+       required: true
+       label: Username/Email Address
+       help: |
+         Enter your username or email address to authenticate
+       hint: user@yourcompany.com
+     - type: secret
+       key: api_key
+       required: true
+       label: API Key
+       help: |
+         Enter your API key to authenticate
+     - type: button
+       label: Authorize
+       style: primary
+       action: authorize
+```
+
+Next, validate provided credentials in `onFormSubmit` method in `src/lifecycle/Lifecycle.ts` file: 
+```TypeScript
+/*
+* example of handling username/password auth section
+*/
+if (section === 'auth' && action === 'authorize') {
+  await storage.settings.put<AuthSection>(section, {...formData, integrated: true});
+
+  // validate the credentials here, e.g. by making an API call
+  const success = true; // replace with actual validation logic
+
+  if (success) {
+    result.addToast('success', 'Validation successful!');
+  } else {
+    result.addToast('warning', 'Your credentials were not accepted. Please check them and try again.');
+  }
+} else {
+  result.addToast('warning', 'Unexpected action received.');
+}
+```
+
+In your code, you get access to stored credentials via `storage` interface from `app-sdk`: 
+```TypeScript
+import { storage } from '@zaiusinc/app-sdk';
+const auth = await storage.settings.get<AuthSection>('auth');
+```
+
+### OAuth authentication
+
+A common use case is to require OAuth authroization to the external service. This use case is more complex and details depends on OAuth provider. The sample app contains an example of Google OAuth.
+
+> [!NOTE] 
+> Real-life examples might be more complex, e.g. involve storing refresh token and refreshing access token periodically
+
+Start from adding OAuth button to app settings in `forms/settings.xml` file: 
+```yml
+- key: oauth
+  label: OAuth authorization
+  properties:
+    - authorized
+  elements:
+    - type: instructions
+      text: Please continue to Google to authorize the connection with ODP
+    - type: oauth_button
+      label: Authorize with Google
+    - type: instructions
+      text: |
+        ** ⚠️ You need to perform the authorization to start to sync data. ⚠️ **
+      visible:
+        key: oauth.authorized
+        equals: false
+```
+
+When a user clicks the button, OCP will redirect the user to the URL returned by `onAuthorizationRequest` method of `Lifecycle` class. Implement `onAuthorizationRequest` method, for example: 
+```Typescript
+public async onAuthorizationRequest(
+  _section: string,
+  _formData: SubmittedFormData
+): Promise<LifecycleSettingsResult> {
+  // example: handling OAuth authorization request
+  const result = new LifecycleSettingsResult();
+
+  try {
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.search = new URLSearchParams({
+      client_id: process.env.APP_ENV_CLIENT_ID,
+      response_type: 'code',
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: process.env.APP_ENV_SCOPE,
+      redirect_uri: functions.getAuthorizationGrantUrl()
+    } as any).toString();
+    return result.redirect(url.toString());
+  } catch (e) {
+    return result.addToast(
+      'danger',
+      'Sorry, an unexpected error occurred. Please try again in a moment.',
+    );
+  }
+
+  return result.addToast('danger', 'Sorry, OAuth is not supported.');
+}
+```
+
+You will have to add `CLIEND_ID` and `ENV_SCOPE` to app env config. More info about env config in [this doc](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/app-structure-env-ocp2). You can also hard-code both values for now. 
+
+Apon successful authorization, user get redirected by back to OCP and OCP calls `onAuthorizationGrant` method of `Lifecycle` class. You should implement this method. You should validate the response, request access token from OAuth provider and store the token in [secret storage](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/secrets-store-ocp2) for later use by the app.
+
+An example of `onAuthorizationGrant` method: 
+```TypeScript
+public async onAuthorizationGrant(
+  _request: Request
+): Promise<AuthorizationGrantResult> {
+  // make sure to add CLIENT_ID, CLIENT_SECRET, and DEVELOPER_TOKEN to your .env file
+  const CLIENT_ID = process.env.APP_ENV_CLIENT_ID || '';
+  const CLIENT_SECRET = process.env.APP_ENV_CLIENT_SECRET || '';
+
+  const result = new AuthorizationGrantResult('');
+  try {
+    await storage.settings.patch('auth', {
+      authorized: false
+    });
+    const request = {
+      method: 'POST',
+      body: JSON.stringify({
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        redirect_uri: functions.getAuthorizationGrantUrl(),
+        code: _request.params.code as string
+      }),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    };
+
+    let token: Token | undefined;
+    const response = await fetch('https://oauth2.googleapis.com/token', request);
+    switch (response.status) {
+    case 200:
+      const rawToken = await response.json() as any;
+      token = {
+        value: rawToken.access_token,
+        refresh: rawToken.refresh_token,
+        exp: Date.now() + (rawToken.expires_in - 60) * 1000
+      };
+      await storage.secrets.put('token', token);
+      break;
+    case 401:
+      logger.error('Unauthorized, invalid credentials.');
+      break;
+    default:
+      logger.error('General server error', response.status, await response.text());
+      throw new Error('API Call Issue');
+    }
+    if (token) {
+      result.addToast('success', 'Successfully authorized!');
+      await storage.settings.patch('auth', {authorized: true});
+    }
+  } catch (e) {
+    logger.error(e);
+    return result.addToast('danger', 'Sorry, OAuth is not supported.');
+  }
+}
+```
+
+Notice that `onAuthorizationGrant` method stores Google token in `token` secret in secret store. 
+You app can access this token by accessing secret store: 
+```TypeScript
+import { storage } from '@zaiusinc/app-sdk';
+const token = await storage.secrets.get<Token>('token');
+```
+
+## Storage
+
+Your app can use 4 types of [storage](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/storage-ocp2):
+- secrets store - suitable for sensitive information not related to a settings form
+- settings store – data backing the settings form. Suitable for any configuration-related data (including passwords and API keys), especially data you need to present to the user through the settings form.
+- key value store – General purpose storage for simple data structures, lists, and sets. Designed for high throughput and moderately large data sets when necessary, but limited to about 400 KB per record.
+- shared key value store – Store and share common data between different components of your app.
+
+Refer to the [docs](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/storage-ocp2) for more details. The sample app contains examples of using settings store and secret store. 
+
 ## Custom dependencies
+
+You can add [your own dependencies](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/add-a-dependency-ocp2) to your app by using the npm install or yarn add command, or by manually editing the package.json file.
+
+For example: 
+```bash
+npm install axios
+```
+
+## Logging and notifications
+
+Use logger provided by `app-sdk` library to log important events in your app and support visibility and troubleshooting. 
+
+Examples: 
+```TypeScript
+import { logger } from '@zaiusinc/app-sdk';
+
+logger.info('Tool called with parameters:', this.request.bodyJSON.parameters);
+logger.warn('Missing recommended parameter:', this.request.bodyJSON.parameters);
+logger.debug('Extra debugging info:', this.request.bodyJSON.parameters);
+```
+
+You can access logs in two ways: 
+- in UI - `Troubleshooting` tab in your app view in OCP App Directory
+- via OCP CLI - with `ocp app logs` command, e.g. `ocp app logs --appId=<YOUR_APP_ID>` (check `ocp app logs --help` for more options)
+
+By default, OCP logs in `INFO` level. You can temporairly change the level (e.g. for troubleshooting) using `ocp app set-log-level` command, e.g. `ocp app set-log-level <YOUR_APP_ID>@<YOUR_APP_VERSION> --trackerID=<PUBLIC_API_KEY_OF_YOUR_OCP_ACCOUNT>
+
+You can also track significant activity through notifications in the Optimizely Connect Platform (OCP) [Activity Log](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/activity-log-notifications-ocp2) (a log of events available for OCP users in OCP UI in `Settings` -> `Activity log`). 
+
+For example: 
+```TypeScript
+import {notifications} from '@zaiusinc/app-sdk';
+notifications.success('Opal tool', 'Tool registered', 'App registered as an Opal tool');
+```
+
+## Overview and assets
+
+Customise how your app is presented in App Directory by editing `directory/overview.md` file. The file is rendered to the app's Overview tab, which is presented when a user clicks through to your app from the OCP App Directory.
+
+You can also privide your own icon for the app. To do this, replace `assets/logo.svg` file with your own icon. The icon is displayed on your app card in the OCP App Directory. The recommended size is 150 x 50 px.
 
 # Test your Opal tool
 

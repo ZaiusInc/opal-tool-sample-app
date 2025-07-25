@@ -7,16 +7,29 @@ import {
   logger,
   Request,
   storage,
-  SubmittedFormData
+  SubmittedFormData,
+  functions
 } from '@zaiusinc/app-sdk';
+import { AuthSection, Token } from '../data/data';
+
 
 export class Lifecycle extends AppLifecycle {
   public async onInstall(): Promise<LifecycleResult> {
     try {
       logger.info('Performing Install');
       // write the generated webhook to the swell settings form
-      const functions = await App.functions.getEndpoints();
-      await App.storage.settings.put('instructions', {opal_tool_url: `${functions.opal_tool}/discovery`});
+      const functionUrls = await App.functions.getEndpoints();
+      await App.storage.settings.put('instructions', {
+        opal_tool_url: `${functionUrls.opal_tool}/discovery`,
+        another_opal_tool_url: `${functionUrls.another_opal_tool}/discovery`
+      });
+
+      /* example: initialize Google oauth section
+      await storage.settings.patch('oauth', {
+        authorized: false
+      });
+      */
+
       return { success: true };
     } catch (error: any) {
       logger.error('Error during installation:', error);
@@ -30,14 +43,38 @@ export class Lifecycle extends AppLifecycle {
 
   public async onSettingsForm(
     section: string,
-    _action: string,
+    action: string,
     formData: SubmittedFormData
   ): Promise<LifecycleSettingsResult> {
     const result = new LifecycleSettingsResult();
     try {
       // TODO: any logic you need to perform when a setup form section is submitted
       // When you are finished, save the form data to the settings store
-      await storage.settings.put(section, formData);
+      if (section === 'bearer_token') {
+        if (action === 'save_token') {
+          await storage.settings.put(section, formData);
+        }
+      }
+
+      /*
+       * example of handling username/password auth section
+       *
+      if (section === 'auth' && action === 'authorize') {
+        await storage.settings.put<AuthSection>(section, {...formData, integrated: true});
+
+        // validate the credentials here, e.g. by making an API call
+        const success = true; // replace with actual validation logic
+
+        if (success) {
+          result.addToast('success', 'Validation successful!');
+        } else {
+          result.addToast('warning', 'Your credentials were not accepted. Please check them and try again.');
+        }
+      } else {
+        result.addToast('warning', 'Unexpected action received.');
+      }
+      */
+
       return result;
     } catch {
       return result.addToast(
@@ -51,18 +88,91 @@ export class Lifecycle extends AppLifecycle {
     _section: string,
     _formData: SubmittedFormData
   ): Promise<LifecycleSettingsResult> {
+    // example: handling OAuth authorization request
     const result = new LifecycleSettingsResult();
-    // TODO: if your application supports the OAuth flow (via oauth_button in the settings form), evaluate the form
-    // data and determine where to send the user: `result.redirect('https://<external oauth endpoint>')`
+
+    /* example: handling OAuth authorization request
+    try {
+      const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      url.search = new URLSearchParams({
+        client_id: process.env.APP_ENV_CLIENT_ID,
+        response_type: 'code',
+        access_type: 'offline',
+        prompt: 'consent',
+        scope: process.env.APP_ENV_SCOPE,
+        redirect_uri: functions.getAuthorizationGrantUrl()
+      } as any).toString();
+      return result.redirect(url.toString());
+    } catch (e) {
+      return result.addToast(
+        'danger',
+        'Sorry, an unexpected error occurred. Please try again in a moment.',
+      );
+    }
+    */
+
     return result.addToast('danger', 'Sorry, OAuth is not supported.');
   }
 
   public async onAuthorizationGrant(
     _request: Request
   ): Promise<AuthorizationGrantResult> {
-    // TODO: if your application supports the OAuth flow, evaluate the inbound request and perform any necessary action
-    // to retrieve the access token, then forward the user to the next relevant settings form section:
-    // `new AuthorizationGrantResult('my_next_section')`
+
+    /* example: handling OAuth authorization grant
+
+    // make sure to add CLIENT_ID, CLIENT_SECRET, and DEVELOPER_TOKEN to your .env file
+    const CLIENT_ID = process.env.APP_ENV_CLIENT_ID || '';
+    const CLIENT_SECRET = process.env.APP_ENV_CLIENT_SECRET || '';
+
+    const result = new AuthorizationGrantResult('');
+    try {
+      await storage.settings.patch('auth', {
+        authorized: false
+      });
+      const request = {
+        method: 'POST',
+        body: JSON.stringify({
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          grant_type: 'authorization_code',
+          redirect_uri: functions.getAuthorizationGrantUrl(),
+          code: _request.params.code as string
+        }),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      };
+
+      let token: Token | undefined;
+      const response = await fetch('https://oauth2.googleapis.com/token', request);
+      switch (response.status) {
+      case 200:
+        const rawToken = await response.json() as any;
+        token = {
+          value: rawToken.access_token,
+          refresh: rawToken.refresh_token,
+          exp: Date.now() + (rawToken.expires_in - 60) * 1000
+        };
+        await storage.secrets.put('token', token);
+        break;
+      case 401:
+        logger.error('Unauthorized, invalid credentials.');
+        break;
+      default:
+        logger.error('General server error', response.status, await response.text());
+        throw new Error('API Call Issue');
+      }
+      if (token) {
+        result.addToast('success', 'Successfully authorized!');
+        await storage.settings.patch('auth', {authorized: true});
+      }
+    } catch (e) {
+      logger.error(e);
+      return result.addToast('danger', 'Sorry, OAuth is not supported.');
+    }
+    */
+
     return new AuthorizationGrantResult('').addToast(
       'danger',
       'Sorry, OAuth is not supported.'
@@ -73,8 +183,11 @@ export class Lifecycle extends AppLifecycle {
     // TODO: any logic required when upgrading from a previous version of the app
     // Note: `fromVersion` may not be the most recent version or could be a beta version
     // write the generated webhook to the swell settings form
-    const functions = await App.functions.getEndpoints();
-    await App.storage.settings.put('instructions', {opal_tool_url: `${functions.opal_tool}/discovery`});
+    const functionUrls = await App.functions.getEndpoints();
+    await App.storage.settings.put('instructions', {
+      opal_tool_url: `${functionUrls.opal_tool}/discovery`,
+      another_opal_tool_url: `${functionUrls.another_opal_tool}/discovery`
+    });
     return { success: true };
   }
 

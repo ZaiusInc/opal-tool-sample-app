@@ -1,5 +1,5 @@
 {
-  "name": "opal_tool_runtime_calc_app",
+  "name": "opal_tool_sample_app",
   "version": "1.0.0-dev.1",
   "main": "dist/index.js",
   "license": "UNLICENSED",

@@ -6,8 +6,69 @@ sections:
         key: opal_tool_url
         label: Opal Tool URL
         disabled: true
-        help: Paste the URL below into your Opal tool settings to enable the runtime calculator.
+        help: Paste the URL below into your Opal tool settings to enable sample tools.
+      - type: text
+        key: another_opal_tool_url
+        label: Another Opal Tool URL
+        disabled: true
+        help: Paste the URL below into your Opal tool settings to enable another Opal tool.
       - type: divider
       - type: instructions
-        text:
-          Paste the URL above into `Discovery URL` field in Opal account `Tools` section.
+        text: Paste the URL above into `Discovery URL` field in Opal account `Tools` section.
+# uncomment if you want to use bearer token authentication
+#  - key: bearer_token
+#    label: Bearer Token
+#    elements:
+#      - type: secret
+#        key: bearer_token
+#        label: Bearer Token (optional)
+#        help: |
+#          If you want to use bearer token for authentication, paste it here. You will have to configure it in Opal registry settings.
+#          Otherwise, leave it empty.
+#      - type: button
+#        label: Save token
+#        action: save_token
+  #=====================================================================================================================
+  # Sample username/password authentication section
+  #=====================================================================================================================
+  #- key: auth
+  #  label: Authorization
+  #  properties:
+  #    - integrated
+  #  elements:
+  #    - type: text
+  #      key: email
+  #      required: true
+  #      label: Username/Email Address
+  #      help: |
+  #        Enter your username or email address to authenticate
+  #      hint: user@yourcompany.com
+  #    - type: secret
+  #      key: api_key
+  #      required: true
+  #      label: API Key
+  #      help: |
+  #        Enter your API key to authenticate
+  #    - type: button
+  #      label: Authorize
+  #      style: primary
+  #      action: authorize
+
+  #=====================================================================================================================
+  # Sample OAuth section
+  #=====================================================================================================================
+  #- key: oauth
+  #  label: OAuth authorization
+  #  properties:
+  #    - authorized
+  #  elements:
+  #    - type: instructions
+  #      text: Please continue to Google to authorize the connection with ODP
+  #    - type: oauth_button
+  #      label: Authorize with Google
+  #    - type: instructions
+  #      text: |
+  #        ** ⚠️ You need to perform the authorization to start to sync data. ⚠️ **
+  #      visible:
+  #        key: oauth.authorized
+  #        equals: false
