@@ -1,13 +1,14 @@
 meta:
   app_id: opal_tool_sample_app
   display_name: Sample Opal tool app
-  version: 1.0.0-dev.12
+  version: 1.0.0-dev.13
   vendor: optimizely
   summary: Opal tool to estimate time to run an experiment
   support_url: https://support.optimizely.com
   contact_email: support@optimizely.com
   categories:
     - Personalization & Content
+    - Opal
   availability:
     - all
 
