@@ -35,7 +35,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@zaiusinc/app-sdk": "^2.2.0",
+    "@zaiusinc/app-sdk": "^2.2.2",
     "@zaiusinc/node-sdk": "^2.0.0",
     "node-fetch": "^2.7.0"
   },
