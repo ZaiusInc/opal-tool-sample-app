@@ -501,7 +501,7 @@ $ ocp app prepare --bump-dev-version --publish
 
 Then, install your app to your sandbox OCP account: 
 ```bash
-$ ocp app install <YOUR_APP_ID>@<YOUR_APP_VERSION> <PUBLIC_API_KEY> 
+$ ocp directory install <YOUR_APP_ID>@<YOUR_APP_VERSION> <PUBLIC_API_KEY> 
 ```
 
 where:
