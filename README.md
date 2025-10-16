@@ -1,6 +1,6 @@
 # Sample Opal tool OCP app
 
-Sample OCP app that implements an Opal tool. You can use it as a template for building your Opal tools in OCP. 
+Sample OCP app that implements an Opal tool using the `@optimizely-opal/opal-tool-ocp-sdk`. You can use it as a template for building your Opal tools in OCP with decorator-based tool registration. 
 
 # Prerequisites 
 
@@ -51,18 +51,33 @@ Run `ocp app validate` command in app folder to validate all settings.
 
 # Build your Opal tool
 
-Opal tools are implement in OCP as [functions](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/functions-ocp2).
-Each function is a tool registry - a set of logically related tools that can be registered in Opal. 
-An OCP app can contain one or more Opal tool registries. 
+Opal tools are implemented in OCP as [functions](https://docs.developers.optimizely.com/optimizely-connect-platform/docs/functions-ocp2).
+
+With the `@optimizely-opal/opal-tool-ocp-sdk`, tools are registered using `@tool` decorators, which can be used in:
+- **ToolFunction classes** - Recommended approach with built-in `/discovery` and `/ready` endpoints, request handling, and lifecycle management
+- **Standalone classes** - Regular TypeScript classes that use `@tool` decorators without extending ToolFunction
+
+> [!NOTE]
+> The SDK currently supports **one OCP function per app**. However, you can register multiple tools within that function using multiple `@tool` decorators.
+
+## About the Opal Tool SDK
+
+This sample app uses the `@optimizely-opal/opal-tool-ocp-sdk`, which streamlines Opal tool development with:
+
+- **Decorator-based tool registration** - Use `@tool` and `@interaction` decorators instead of manual discovery payloads
+- **Automatic parameter validation** - SDK validates all parameters and returns RFC 9457 compliant error responses
+- **Type-safe development** - Full TypeScript support with comprehensive type definitions
+- **Automatic request routing** - No need to manually check paths and route requests
+- **Built-in endpoints** - `/discovery` and `/ready` endpoints automatically generated
+- **Authentication support** - Built-in OptiID authentication integration
+
+The SDK significantly reduces boilerplate code and makes tool development faster and more maintainable. 
 
 ## Setting up a tool registry
 
-This section describes how a tool registry is set up. 
+This section describes how a tool registry is set up.
 
-> [!NOTE] 
-> The sample app contains one tool registry, so if you you are not planning to build mulitple registries in your app, you can skip this section. 
-
-A tool/function is declared in `app.yml` file: 
+A tool/function is declared in `app.yml` file:
 ```yml
 functions:
   opal_tool:
@@ -72,108 +87,95 @@ functions:
 
 The value of `entry_point` property is the name of the class that implements the tool. The file is located in `src/functions` folder. The file exports a class, which name matches the value of `entry_point` property.
 
-Here is the template of an Opla tool function class. Check [src/functions/OpalToolFunction.ts](./src/functions/OpalToolFunction.ts) for sample implementation.
+Here is the template of an Opal tool function class. Check [src/functions/OpalToolFunction.ts](./src/functions/OpalToolFunction.ts) for sample implementation.
+
 ```TypeScript
-import { logger, Function, Response } from '@zaiusinc/app-sdk';
+import { logger } from '@zaiusinc/app-sdk';
+import { ToolFunction, tool, ParameterType, OptiIdAuthData } from '@optimizely-opal/opal-tool-ocp-sdk';
 
 // Define interfaces for the parameters of each function
 interface Tool1Parameters {
   param1: string;
-  param2: number;
+  param2?: number;
 }
 
-// Define Opal tool metadata  - list of tools and their parameters
-const discoveryPayload = {
-  'functions': [
-    {
-      'name': 'tool1', // tool name will show on the list in Opal UI
-      'description': 'Description of the tool', // description - tells Opal what the tool does
-      'parameters': [ // parameters
-        {
-          'name': 'param1',
-          'type': 'string',
-          'description': 'Text param',
-          'required': true
-        },
-        {
-          'name': 'param2',
-          'type': 'number',
-          'description': 'Numeric param',
-          'required': false
-        }
-      ],
-      'endpoint': '/tools/greeting',
-      'http_method': 'POST'
-    }
-  ]
-};
-
 /**
- * class that implements the Opal tool functions. Requirements:
- * - Must extend the Function class from the SDK
+ * Class that implements the Opal tool functions. Requirements:
+ * - Must extend the ToolFunction class from the SDK
  * - Name must match the value of entry_point property from app.yml manifest
  * - Name must match the file name
  */
-export class OpalToolFunction extends Function {
+export class OpalToolFunction extends ToolFunction {
 
   /**
-   * Processing the request from Opal
-   * Add your logic here to handle every tool declared in the discoveryPayload.
+   * Optional: Override the ready() method to check if the function is ready
+   * The /ready endpoint will call this method and return the status
    */
-  public async perform(): Promise<Response> {
-    if (this.request.path === '/discovery') {
-      return new Response(200, discoveryPayload);
-    } else if (this.request.path === '/tools/greeting') {
-      const params = this.extractParameters() as Tool1Parameters;
-      const response =  this.tool1Handler(params);
-      return new Response(200, response);
-    } else {
-      return new Response(400, 'Invalid path');
-    }
-  }
-
-  private extractParameters() {
-    // Extract parameters from the request body
-    if (this.request.bodyJSON && this.request.bodyJSON.parameters) {
-      // Standard format: { "parameters": { ... } }
-      logger.info('Extracted parameters from \'parameters\' key:', this.request.bodyJSON.parameters);
-      return this.request.bodyJSON.parameters;
-    } else {
-      // Fallback for direct testing: { "name": "value" }
-      logger.warn('\'parameters\' key not found in request body. Using body directly.');
-      return this.request.bodyJSON;
-    }
+  protected async ready(): Promise<boolean> {
+    // Add any initialization checks here
+    return true;
   }
 
   /**
-   * The logic of the tool goes here.
+   * Tool definition using the @tool decorator
+   *
+   * The @tool decorator automatically:
+   * - Registers the tool in the discovery endpoint
+   * - Validates parameters against the defined schema
+   * - Routes requests to this handler method
+   * - Returns RFC 9457 compliant error responses for validation failures
    */
-  private async tool1Handler(parameters: Tool1Parameters) {
-    // implement your logic here
+  @tool({
+    name: 'tool1',
+    description: 'Description of the tool',
+    endpoint: '/tools/tool1',
+    parameters: [
+      {
+        name: 'param1',
+        type: ParameterType.String,
+        description: 'Text param',
+        required: true
+      },
+      {
+        name: 'param2',
+        type: ParameterType.Number,
+        description: 'Numeric param',
+        required: false
+      }
+    ]
+  })
+  async tool1Handler(parameters: Tool1Parameters, authData?: OptiIdAuthData) {
+    logger.info('Tool1 called with parameters:', parameters);
 
+    // Implement your logic here
     return {
-      output_value: "Output from the tool"
+      output_value: `Processed ${parameters.param1}`,
+      param2: parameters.param2
     };
   }
-
 }
-
 ```
 
-Parameter types supported by Opal: 
-- string
-- integer
-- number
-- boolean
-- array
-- object
+**Key features of the new SDK:**
+
+- **Decorator-based registration**: Use `@tool` decorator to register tools - no manual discovery payload needed
+- **Automatic parameter validation**: SDK validates parameters automatically and returns RFC 9457 compliant errors
+- **Automatic routing**: SDK handles request routing - no manual path checking needed
+- **Type safety**: Full TypeScript support with type-safe parameter interfaces
+- **Discovery endpoint**: Automatically generated at `/discovery`
+- **Ready endpoint**: Automatically generated at `/ready` (override `ready()` method for custom logic)
+
+Parameter types supported by the SDK:
+- `ParameterType.String` - string values
+- `ParameterType.Integer` - integer numbers
+- `ParameterType.Number` - numeric values (including decimals)
+- `ParameterType.Boolean` - boolean values
+- `ParameterType.List` - arrays
+- `ParameterType.Dictionary` - objects
 
 ## Exposing tool registry
 
-The app exposes discovery URL of the tool in app settings form UI. 
-
-> [!NOTE]  
-> You can skip this section if you do not plan to expose muliple tool registries from your app. 
+The app exposes the discovery URL of the tool in the app settings form UI. 
 
 The app exposes discovery URL by defining `opal_tool_url` configuration property in `forms/settings.yml` file:
 ```yml
@@ -185,59 +187,206 @@ sections:
         key: opal_tool_url
         label: Opal Tool URL
         disabled: true
-        help: Paste the URL below into your Opal tool settings to enable the sample tool.
+        help: Paste the URL below into your Opal tool settings to enable the sample tools.
       - type: divider
       - type: instructions
         text:
           Paste the URL above into `Discovery URL` field in Opal account `Tools` section.
 ```
 
-Then, it sets the value of the property in life-cycle `onInstall` and `onUpdate` events in `src/lifecycle/Lifecycle.ts` file: 
+Then, it sets the value of the property in lifecycle `onInstall` and `onUpgrade` events in `src/lifecycle/Lifecycle.ts` file:
 ```TypeScript
-// write the generated webhook to the swell settings form
-const functions = await App.functions.getEndpoints();
-await App.storage.settings.put('instructions', {opal_tool_url: `${functions.opal_tool}/discovery`});
+// write the generated webhook to the settings form
+const functionUrls = await App.functions.getEndpoints();
+await App.storage.settings.put('instructions', {
+  opal_tool_url: `${functionUrls.opal_tool}/discovery`
+});
 ```
 
-TODO screenshot
+## Multiple tools within a registry
 
-## Multiple tool registries in a single app
+A single tool registry (ToolFunction class) can contain multiple tools by using multiple `@tool` decorators. This is the recommended way to organize related tools together.
 
-The sample app comes with a single tool registry. This is enough in most cases. However, sometimes it might be useful to expose multiple registeries and allow app users to pick registries they want to install to their Opal account. If you decide to add more registries to your app, you can do this in these steps: 
+**Example with multiple tools:**
 
-1. Declare new registry function in `app.yml`
-```yml
-another_opal_tool: 
-  entry_point: AnotherOpalToolFunction
-  description: AnotherOpal tool function
+```TypeScript
+import { logger } from '@zaiusinc/app-sdk';
+import { ToolFunction, tool, ParameterType, OptiIdAuthData } from '@optimizely-opal/opal-tool-ocp-sdk';
+
+export class OpalToolFunction extends ToolFunction {
+
+  // First tool
+  @tool({
+    name: 'greeting',
+    description: 'Greets a person',
+    endpoint: '/tools/greeting',
+    parameters: [
+      {
+        name: 'name',
+        type: ParameterType.String,
+        description: 'Name of the person to greet',
+        required: true
+      }
+    ]
+  })
+  public async greeting(parameters: { name: string }) {
+    return { greeting: `Hello, ${parameters.name}!` };
+  }
+
+  // Second tool
+  @tool({
+    name: 'calculator',
+    description: 'Performs arithmetic operations',
+    endpoint: '/tools/calculator',
+    parameters: [
+      {
+        name: 'operation',
+        type: ParameterType.String,
+        description: 'Operation: add, subtract, multiply, divide',
+        required: true
+      },
+      {
+        name: 'a',
+        type: ParameterType.Number,
+        description: 'First number',
+        required: true
+      },
+      {
+        name: 'b',
+        type: ParameterType.Number,
+        description: 'Second number',
+        required: true
+      }
+    ]
+  })
+  public async calculator(parameters: { operation: string; a: number; b: number }) {
+    let result: number;
+    switch (parameters.operation) {
+    case 'add':
+      result = parameters.a + parameters.b;
+      break;
+    case 'subtract':
+      result = parameters.a - parameters.b;
+      break;
+    case 'multiply':
+      result = parameters.a * parameters.b;
+      break;
+    case 'divide':
+      result = parameters.a / parameters.b;
+      break;
+    default:
+      throw new Error(`Unknown operation: ${parameters.operation}`);
+    }
+    return { result };
+  }
+
+  // Add more tools as needed...
+}
 ```
 
-2. Implement your tool function 
+All tools defined with `@tool` decorators within the same ToolFunction class will be automatically:
+- Registered in the discovery endpoint
+- Routed to the correct handler method
+- Validated for parameter types and requirements
 
-  Create `AnotherOpalToolFunction.ts` file in `src/functions` folder. The file should export `AnotherOpalToolFunction` class, which extends `Function` abstract class.
+## Organizing tools in separate classes
 
-  Implement `perform` method of the class, similarily to how it is done in `src/functions/OpalToolFunction.ts`. 
+For better code organization, you can define `@tool` decorators in separate classes and import them into your main `ToolFunction` class. The decorators register tools globally, so simply importing the classes is enough to make their tools available.
 
-3. Expose another registry URL
+**Example - Organizing tools by domain:**
 
-  Add an extra paramter to app settings form in `forms/settings.yml` class: 
-  ```yml
-  - type: text
-    key: another_opal_tool_url
-    label: Another Opal Tool URL
-    disabled: true
-    help: Paste the URL below into your Opal tool settings to enable another Opal tool.
-  ```
+**src/tools/WeatherTools.ts:**
+```TypeScript
+import { tool, ParameterType } from '@optimizely-opal/opal-tool-ocp-sdk';
 
-  Set the new parameter in both `onInstall` and `onUpgrade` methods in `src/lifecycle/Lifecycle.ts` file: 
-  ```TypeScript
-    await App.storage.settings.put('instructions', {
-      opal_tool_url: `${functions.opal_tool}/discovery`,
-      another_opal_tool_url: `${functions.another_opal_tool}/discovery`
-    });
-  ```
+export class WeatherTools {
+  @tool({
+    name: 'get_weather',
+    description: 'Gets current weather for a location',
+    endpoint: '/tools/weather',
+    parameters: [
+      {
+        name: 'city',
+        type: ParameterType.String,
+        description: 'City name',
+        required: true
+      }
+    ]
+  })
+  public async getWeather(parameters: { city: string }) {
+    // Tool implementation
+    return { temperature: 72, conditions: 'sunny', city: parameters.city };
+  }
+}
+```
 
-Now, users of your app can install each tool registry separately to their Opal accounts. 
+**src/tools/CalculatorTools.ts:**
+```TypeScript
+import { tool, ParameterType } from '@optimizely-opal/opal-tool-ocp-sdk';
+
+export class CalculatorTools {
+  @tool({
+    name: 'add_numbers',
+    description: 'Adds two numbers together',
+    endpoint: '/tools/add',
+    parameters: [
+      {
+        name: 'a',
+        type: ParameterType.Number,
+        description: 'First number',
+        required: true
+      },
+      {
+        name: 'b',
+        type: ParameterType.Number,
+        description: 'Second number',
+        required: true
+      }
+    ]
+  })
+  public async addNumbers(parameters: { a: number; b: number }) {
+    return { result: parameters.a + parameters.b };
+  }
+}
+```
+
+**src/functions/OpalToolFunction.ts:**
+```TypeScript
+import { ToolFunction } from '@optimizely-opal/opal-tool-ocp-sdk';
+
+// Import tool classes - this registers all their @tool decorators
+import { WeatherTools } from '../tools/WeatherTools';
+import { CalculatorTools } from '../tools/CalculatorTools';
+
+/**
+ * Main OCP function class
+ * Simply importing the tool classes above registers all their tools
+ */
+export class OpalToolFunction extends ToolFunction {
+  protected async ready(): Promise<boolean> {
+    return true;
+  }
+}
+```
+
+**How it works:**
+1. **Tool registration** - When you import a class with `@tool` decorators, those decorators execute immediately and register the tools globally with the SDK
+2. **Discovery** - The `ToolFunction` base class automatically includes all registered tools in the `/discovery` endpoint
+3. **Request routing** - The SDK automatically routes requests to the correct tool handlers
+4. **No additional wiring needed** - Just import the classes, and their tools become available
+
+**Benefits of this approach:**
+- ✅ **Better organization** - Group related tools together in separate files
+- ✅ **Easier maintenance** - Find and modify tools more easily
+- ✅ **Team collaboration** - Different developers can work on different tool files
+- ✅ **Reusability** - Share tool classes across projects if needed
+- ✅ **Cleaner code** - Keep your main `ToolFunction` class simple and focused
+
+**Important notes:**
+- You **must** extend `ToolFunction` in your main OCP function class (defined in `app.yml`)
+- Tool decorators can be in any class - they don't need to extend anything
+- All tools are registered globally, regardless of which class they're defined in
+- The main `ToolFunction` class provides the entry point (`perform()` method) that OCP calls
 
 ## Custom configuration and authorization
 

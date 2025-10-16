@@ -7,10 +7,9 @@ import {
   logger,
   Request,
   storage,
-  SubmittedFormData,
-  functions
+  SubmittedFormData
 } from '@zaiusinc/app-sdk';
-import { AuthSection, Token } from '../data/data';
+// import { AuthSection, Token } from '../data/data';
 
 
 export class Lifecycle extends AppLifecycle {
@@ -20,8 +19,7 @@ export class Lifecycle extends AppLifecycle {
       // write the generated webhook to the swell settings form
       const functionUrls = await App.functions.getEndpoints();
       await App.storage.settings.put('instructions', {
-        opal_tool_url: `${functionUrls.opal_tool}/discovery`,
-        another_opal_tool_url: `${functionUrls.another_opal_tool}/discovery`
+        opal_tool_url: `${functionUrls.opal_tool}/discovery`
       });
 
       /* example: initialize Google oauth section
@@ -185,8 +183,7 @@ export class Lifecycle extends AppLifecycle {
     // write the generated webhook to the swell settings form
     const functionUrls = await App.functions.getEndpoints();
     await App.storage.settings.put('instructions', {
-      opal_tool_url: `${functionUrls.opal_tool}/discovery`,
-      another_opal_tool_url: `${functionUrls.another_opal_tool}/discovery`
+      opal_tool_url: `${functionUrls.opal_tool}/discovery`
     });
     return { success: true };
   }

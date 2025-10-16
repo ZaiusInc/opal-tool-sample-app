@@ -1,4 +1,6 @@
-import { logger, Function, Response, storage } from '@zaiusinc/app-sdk';
+import { logger } from '@zaiusinc/app-sdk';
+import { ToolFunction, tool, ParameterType, OptiIdAuthData } from '@optimizely-opal/opal-tool-ocp-sdk';
+// import { storage } from '@zaiusinc/app-sdk';
 // import { AuthSection } from '../data/data';
 
 // Define interfaces for the parameters of each function
@@ -11,112 +13,91 @@ interface DateParameters {
   format?: string;
 }
 
-// Define Opal tool metadata  - list of tools and their parameters
-const discoveryPayload = {
-  'functions': [
-    {
-      'name': 'greeting',
-      'description': 'Greets a person in a random language (English, Spanish, or French)',
-      'parameters': [
-        {
-          'name': 'name',
-          'type': 'string',
-          'description': 'Name of the person to greet',
-          'required': true
-        },
-        {
-          'name': 'language',
-          'type': 'string',
-          'description': 'Language for greeting (defaults to random)',
-          'required': false
-        }
-      ],
-      'endpoint': '/tools/greeting',
-      'http_method': 'POST'
-    },
-    {
-      'name': 'todays-date',
-      'description': 'Returns today\'s date in the specified format',
-      'parameters': [
-        {
-          'name': 'format',
-          'type': 'string',
-          'description': 'Date format (defaults to ISO format)',
-          'required': false
-        }
-      ],
-      'endpoint': '/tools/todays-date',
-      'http_method': 'POST'
-    }
-  ]
-};
-
 /**
- * class that implements the Opal tool functions. Requirements:
- * - Must extend the Function class from the SDK
+ * Class that implements the Opal tool functions. Requirements:
+ * - Must extend the ToolFunction class from the SDK
  * - Name must match the value of entry_point property from app.yml manifest
  * - Name must match the file name
  */
-export class OpalToolFunction extends Function {
+export class OpalToolFunction extends ToolFunction {
 
   /**
-   * Processing the request from Opal
-   * Add your logic here to handle every tool declared in the discoveryPayload.
+   * Optional: Override the ready() method to check if the function is ready to process requests
+   * The /ready endpoint will call this method and return the status
    */
-  public async perform(): Promise<Response> {
-    // uncomment the following lines to enable bearer token authentication
-    /*
+  protected async ready(): Promise<boolean> {
+    // Add any initialization checks here
+    // For example: check if external services are available, configuration is valid, etc.
+    return true;
+  }
+
+  /**
+   * Optional: Bearer token authentication
+   * Uncomment this method to validate bearer tokens before processing requests
+   */
+  /*
+  protected async validateBearerToken(): Promise<boolean> {
     const bearerToken = (await storage.settings.get('bearer_token')).bearer_token as string;
     if (bearerToken && this.request.headers.get('Authorization') !== `Bearer ${bearerToken}`) {
       logger.warn('Invalid or missing bearer token', JSON.stringify(this.request));
-      return new Response(401, 'Invalid or missing bearer token');
+      return false;
     }
-    */
-
-    /*
-     * example: fetching configured username/password credentials
-     *
-    const auth = await storage.settings.get<AuthSection>('auth');
-    */
-
-    /*
-     * example: fetching Google Oauth token from secret storage
-     *
-     const token = await storage.secrets.get<Token>('token');
-     */
-
-    if (this.request.path === '/discovery') {
-      return new Response(200, discoveryPayload);
-    } else if (this.request.path === '/tools/greeting') {
-      const params = this.extractParameters() as GreetingParameters;
-      const response =  this.greeting(params);
-      return new Response(200, response);
-    } else if (this.request.path === '/tools/todays-date') {
-      const params = this.extractParameters() as DateParameters;
-      const response =  this.todaysDate(params);
-      return new Response(200, response);
-    } else {
-      return new Response(400, 'Invalid path');
-    }
+    return true;
   }
-
-  private extractParameters() {
-    // Extract parameters from the request body
-    if (this.request.bodyJSON && this.request.bodyJSON.parameters) {
-      // Standard format: { "parameters": { ... } }
-      logger.info('Extracted parameters from \'parameters\' key:', this.request.bodyJSON.parameters);
-      return this.request.bodyJSON.parameters;
-    } else {
-      // Fallback for direct testing: { "name": "value" }
-      logger.warn('\'parameters\' key not found in request body. Using body directly.');
-      return this.request.bodyJSON;
-    }
-  }
+  */
 
   /**
-   * The logic of the tool goes here.
+   * Greeting tool - greets a person in a specified or random language
+   *
+   * The @tool decorator automatically:
+   * - Registers the tool in the discovery endpoint
+   * - Validates parameters against the defined schema
+   * - Routes requests to this handler method
+   * - Returns RFC 9457 compliant error responses for validation failures
    */
-  private async greeting(parameters: GreetingParameters) {
+  @tool({
+    name: 'greeting',
+    description: 'Greets a person in a random language (English, Spanish, or French)',
+    endpoint: '/tools/greeting',
+    parameters: [
+      {
+        name: 'name',
+        type: ParameterType.String,
+        description: 'Name of the person to greet',
+        required: true
+      },
+      {
+        name: 'language',
+        type: ParameterType.String,
+        description: 'Language for greeting (defaults to random)',
+        required: false
+      }
+    ]
+  })
+  public async greeting(parameters: GreetingParameters, _authData?: OptiIdAuthData) {
+    /*
+     * Example: fetching configured username/password credentials
+     *
+     * const auth = await storage.settings.get<AuthSection>('auth');
+     */
+
+    /*
+     * Example: fetching Google OAuth token from secret storage
+     *
+     * const token = await storage.secrets.get<Token>('token');
+     */
+
+    /*
+     * Example: using OptiID authentication data
+     *
+     * if (authData) {
+     *   const { customer_id, instance_id, access_token } = authData.credentials;
+     *   // Use the credentials for authenticated operations
+     * }
+     */
+
+    logger.info('Greeting tool called with parameters:', parameters);
+
     const { name, language } = parameters;
 
     // If language not specified, choose randomly
@@ -139,7 +120,25 @@ export class OpalToolFunction extends Function {
     };
   }
 
-  private async todaysDate(parameters: DateParameters) {
+  /**
+   * Today's date tool - returns the current date in a specified format
+   */
+  @tool({
+    name: 'todays-date',
+    description: 'Returns today\'s date in the specified format',
+    endpoint: '/tools/todays-date',
+    parameters: [
+      {
+        name: 'format',
+        type: ParameterType.String,
+        description: 'Date format (defaults to ISO format)',
+        required: false
+      }
+    ]
+  })
+  public async todaysDate(parameters: DateParameters, _authData?: OptiIdAuthData) {
+    logger.info('Today\'s date tool called with parameters:', parameters);
+
     const format = parameters.format || '%Y-%m-%d';
 
     // Get today's date
