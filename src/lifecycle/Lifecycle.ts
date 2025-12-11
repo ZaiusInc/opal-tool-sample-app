@@ -16,11 +16,6 @@ export class Lifecycle extends AppLifecycle {
   public async onInstall(): Promise<LifecycleResult> {
     try {
       logger.info('Performing Install');
-      // write the generated webhook to the swell settings form
-      const functionUrls = await App.functions.getEndpoints();
-      await App.storage.settings.put('instructions', {
-        opal_tool_url: `${functionUrls.opal_tool}/discovery`
-      });
 
       /* example: initialize Google oauth section
       await storage.settings.patch('oauth', {
@@ -181,10 +176,6 @@ export class Lifecycle extends AppLifecycle {
     // TODO: any logic required when upgrading from a previous version of the app
     // Note: `fromVersion` may not be the most recent version or could be a beta version
     // write the generated webhook to the swell settings form
-    const functionUrls = await App.functions.getEndpoints();
-    await App.storage.settings.put('instructions', {
-      opal_tool_url: `${functionUrls.opal_tool}/discovery`
-    });
     return { success: true };
   }
 

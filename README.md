@@ -83,9 +83,11 @@ functions:
   opal_tool:
     entry_point: OpalToolFunction
     description: Opal tool function
+    opal_tool: true
 ```
 
 The value of `entry_point` property is the name of the class that implements the tool. The file is located in `src/functions` folder. The file exports a class, which name matches the value of `entry_point` property.
+`opal_tool` flag tells OCP that the function implements Opal tools. OCP will allow users to register the tool from OCP UI. 
 
 Here is the template of an Opal tool function class. Check [src/functions/OpalToolFunction.ts](./src/functions/OpalToolFunction.ts) for sample implementation.
 
@@ -173,35 +175,9 @@ Parameter types supported by the SDK:
 - `ParameterType.List` - arrays
 - `ParameterType.Dictionary` - objects
 
-## Exposing tool registry
+## Registring tools from OCP UI
 
-The app exposes the discovery URL of the tool in the app settings form UI. 
-
-The app exposes discovery URL by defining `opal_tool_url` configuration property in `forms/settings.yml` file:
-```yml
-sections:
-  - key: instructions
-    label: Instructions
-    elements:
-      - type: text
-        key: opal_tool_url
-        label: Opal Tool URL
-        disabled: true
-        help: Paste the URL below into your Opal tool settings to enable the sample tools.
-      - type: divider
-      - type: instructions
-        text:
-          Paste the URL above into `Discovery URL` field in Opal account `Tools` section.
-```
-
-Then, it sets the value of the property in lifecycle `onInstall` and `onUpgrade` events in `src/lifecycle/Lifecycle.ts` file:
-```TypeScript
-// write the generated webhook to the settings form
-const functionUrls = await App.functions.getEndpoints();
-await App.storage.settings.put('instructions', {
-  opal_tool_url: `${functionUrls.opal_tool}/discovery`
-});
-```
+For every function marked as Opal tool function (`opal_tool` flag in `app.yml` file), OCP will allow registering tools implemented by the app to Opal directly in OCP UI. 
 
 ## Multiple tools within a registry
 
