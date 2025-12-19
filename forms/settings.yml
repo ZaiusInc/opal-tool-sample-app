@@ -2,14 +2,8 @@ sections:
   - key: instructions
     label: Instructions
     elements:
-      - type: text
-        key: opal_tool_url
-        label: Opal Tool URL
-        disabled: true
-        help: Paste the URL below into your Opal tool settings to enable the sample tools.
-      - type: divider
       - type: instructions
-        text: Paste the URL above into `Discovery URL` field in Opal account `Tools` section.
+        text: Configure the app and add the tools to Opal.
 # uncomment if you want to use bearer token authentication
 #  - key: bearer_token
 #    label: Bearer Token

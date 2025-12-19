@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@optimizely-opal/opal-tool-ocp-sdk": "^1.0.0-beta.3",
-    "@zaiusinc/app-sdk": "^2.2.4",
+    "@zaiusinc/app-sdk": "2.4.0",
     "@zaiusinc/node-sdk": "^2.0.0",
     "node-fetch": "^2.7.0"
   },

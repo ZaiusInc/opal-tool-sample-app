@@ -1007,10 +1007,10 @@
   dependencies:
     ajv "^8.17.1"
 
-"@zaiusinc/app-sdk@^2.2.4":
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/@zaiusinc/app-sdk/-/app-sdk-2.3.0.tgz#98b43cf3e45a30ca57f0ed5d3224d5fa4a65e34d"
-  integrity sha512-TYHEnSxVcrkqnf5ZV5e2lPv4SG/8wz81FMpVSiZNN+OWE8qKW6efsjvqeiqYsuE5CEzfu9vGe/k2MJn0OFAnzA==
+"@zaiusinc/app-sdk@2.4.0":
+  version "2.4.0"
+  resolved "https://npm.pkg.github.com/download/@zaiusinc/app-sdk/2.4.0/41131c78f7ebba9cdd31a08c78c7ac52e99a3033#41131c78f7ebba9cdd31a08c78c7ac52e99a3033"
+  integrity sha512-Q8M1FXciY1JI0C1aatPXOthSfl8Kr8wUuAZoGz5YH4EbEwAg8ggQSU7Akfk4m9UfaP4H1Zbsj19cV2n9n8C1uA==
   dependencies:
     "@zaiusinc/app-forms-schema" "^2.0.0"
     ajv "^8.17.1"

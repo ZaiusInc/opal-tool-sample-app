@@ -18,3 +18,4 @@ functions:
   opal_tool:
     entry_point: OpalToolFunction
     description: Opal tool function
+    opal_tool: true
