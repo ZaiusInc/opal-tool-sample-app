@@ -4,41 +4,25 @@
   "main": "dist/index.js",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "yarn && npx rimraf remove dist && npx tsc && copyfiles app.yml dist && copyfiles --up 1 \"src/**/*.{yml,yaml}\" dist",
+    "build": "yarn && npx rimraf remove dist && npx tsc && cpy app.yml dist && cpy --up 1 \"src/**/*.{yml,yaml}\" dist",
     "validate": "yarn build && yarn lint && yarn test && npx cross-env LOG_LEVEL=never node node_modules/@zaiusinc/app-sdk/dist/app/validation/runValidation.js",
     "lint": "npx eslint src --ext ts",
-    "test": "npx jest --passWithNoTests"
+    "test": "npx vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@eslint/compat": "^1.2.9",
-    "@stylistic/eslint-plugin": "^4.2.0",
-    "@types/jest": "^29.5.14",
     "@types/node": "^22.15.17",
-    "@types/node-fetch": "^2.6.12",
-    "@typescript-eslint/eslint-plugin": "^8.32.1",
-    "@typescript-eslint/eslint-plugin-tslint": "^7.0.2",
-    "@typescript-eslint/parser": "^8.32.1",
-    "@zaiusinc/eslint-config-presets": "^2.0.0",
-    "copyfiles": "^2.4.1",
+    "@zaiusinc/eslint-config-presets": "^3.0.0",
+    "cpy-cli": "^6.0.0",
     "cross-env": "^7.0.3",
     "dotenv": "^16.5.0",
-    "eslint": "^9.26.0",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-jest": "^28.11.0",
-    "eslint-plugin-jsdoc": "^50.6.14",
-    "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-react": "^7.37.5",
-    "jest": "^29.7.0",
     "rimraf": "^6.0.1",
-    "ts-jest": "^29.3.2",
-    "tslint": "^6.1.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@optimizely-opal/opal-tool-ocp-sdk": "^1.0.0-beta.3",
-    "@zaiusinc/app-sdk": "2.4.0",
-    "@zaiusinc/node-sdk": "^2.0.0",
-    "node-fetch": "^2.7.0"
+    "@zaiusinc/app-sdk": "3.3.2",
+    "@zaiusinc/node-sdk": "3.0.0"
   },
   "resolutions": {
     "grpc-boom": "^3.0.11"

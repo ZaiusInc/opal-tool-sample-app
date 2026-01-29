@@ -10,3 +10,4 @@ coverage/
 .DS_Store
 .history
 *.iml
+.ocp-local
