@@ -1,9 +1,9 @@
 meta:
   app_id: opal_tool_sample_app
-  display_name: Sample Opal tool app
+  display_name: Sample Mark tool app
   version: 1.0.0-dev.13
   vendor: optimizely
-  summary: Opal tool to estimate time to run an experiment
+  summary: Mark tool to estimate time to run an experiment
   support_url: https://support.optimizely.com
   contact_email: support@optimizely.com
   categories:
@@ -17,5 +17,5 @@ runtime: node22
 functions:
   opal_tool:
     entry_point: OpalToolFunction
-    description: Opal tool function
+    description: Mark tool function
     opal_tool: true

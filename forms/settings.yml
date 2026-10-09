@@ -3,7 +3,7 @@ sections:
     label: Instructions
     elements:
       - type: instructions
-        text: Configure the app and add the tools to Opal.
+        text: Configure the app and add the tools to Mark.
 # uncomment if you want to use bearer token authentication
 #  - key: bearer_token
 #    label: Bearer Token
